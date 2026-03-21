@@ -69,15 +69,20 @@ jobs:
           test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
 
       - name: Install deps
+        env:
+          UV_EXTRAS: ${{ inputs.uv-extras }}
         run: |
           set -euo pipefail
-          uv sync --frozen --extra ${{ inputs.uv-extras }}
+          uv sync --frozen --extra "$UV_EXTRAS"
 
       - name: Generate coverage report
+        env:
+          COVERAGE_COMMAND: ${{ inputs.coverage-command }}
+          COVERAGE_FILE: ${{ inputs.coverage-file }}
         run: |
           set -euo pipefail
-          ${{ inputs.coverage-command }}
-          test -s ${{ inputs.coverage-file }}
+          $COVERAGE_COMMAND
+          test -s "$COVERAGE_FILE"
 
       - name: Upload coverage to Codecov
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}

@@ -45,23 +45,32 @@ jobs:
           fi
 
       - name: Build image
+        env:
+          ENGINE: ${{ steps.engine.outputs.bin }}
+          CONTAINERFILE: ${{ inputs.containerfile }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+          BUILD_ARGS_INPUT: ${{ inputs.build-args }}
+          CONTEXT: ${{ inputs.context }}
         run: |
           set -euo pipefail
           BUILD_ARGS=()
-          if [ -n "${{ inputs.build-args }}" ]; then
+          if [ -n "$BUILD_ARGS_INPUT" ]; then
             while IFS= read -r arg; do
               [ -z "$arg" ] && continue
               BUILD_ARGS+=(--build-arg "$arg")
-            done <<< "${{ inputs.build-args }}"
+            done <<< "$BUILD_ARGS_INPUT"
           fi
-          ${{ steps.engine.outputs.bin }} build \
-            -f "${{ inputs.containerfile }}" \
-            -t "${{ inputs.image-name }}" \
+          "$ENGINE" build \
+            -f "$CONTAINERFILE" \
+            -t "$IMAGE_NAME" \
             "${BUILD_ARGS[@]+"${BUILD_ARGS[@]}"}" \
-            "${{ inputs.context }}"
+            "$CONTEXT"
 
       - name: Smoke test image
+        env:
+          ENGINE: ${{ steps.engine.outputs.bin }}
+          IMAGE_NAME: ${{ inputs.image-name }}
         run: |
           set -euo pipefail
-          ${{ steps.engine.outputs.bin }} run --rm "${{ inputs.image-name }}" --help \
-            || ${{ steps.engine.outputs.bin }} run --rm "${{ inputs.image-name }}" true
+          "$ENGINE" run --rm "$IMAGE_NAME" --help \
+            || "$ENGINE" run --rm "$IMAGE_NAME" true

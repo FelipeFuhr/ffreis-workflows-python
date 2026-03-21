@@ -51,11 +51,15 @@ jobs:
           test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
 
       - name: Install deps
+        env:
+          UV_EXTRAS: ${{ inputs.uv-extras }}
         run: |
           set -euo pipefail
-          uv sync --frozen --extra ${{ inputs.uv-extras }}
+          uv sync --frozen --extra "$UV_EXTRAS"
 
       - name: Ruff format check
+        env:
+          SOURCE_DIRS: ${{ inputs.source-dirs }}
         run: |
           set -euo pipefail
-          uv run ruff format --check ${{ inputs.source-dirs }}
+          uv run ruff format --check $SOURCE_DIRS

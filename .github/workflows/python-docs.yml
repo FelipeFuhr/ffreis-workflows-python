@@ -51,11 +51,15 @@ jobs:
           test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
 
       - name: Install deps (docs extras)
+        env:
+          UV_EXTRAS: ${{ inputs.uv-extras }}
         run: |
           set -euo pipefail
-          uv sync --frozen --extra ${{ inputs.uv-extras }}
+          uv sync --frozen --extra "$UV_EXTRAS"
 
       - name: Build docs
+        env:
+          DOCS_COMMAND: ${{ inputs.docs-command }}
         run: |
           set -euo pipefail
-          ${{ inputs.docs-command }}
+          $DOCS_COMMAND
