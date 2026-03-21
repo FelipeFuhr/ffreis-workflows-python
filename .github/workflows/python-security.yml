@@ -47,10 +47,9 @@ jobs:
       - name: Install dependencies from lock
         run: |
           set -euo pipefail
-          uv sync
+          uv sync --frozen
 
       - name: pip-audit
         run: |
           set -euo pipefail
-          uv run pip install --upgrade pip-audit
           uv run pip-audit

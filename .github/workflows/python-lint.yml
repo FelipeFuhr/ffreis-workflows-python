@@ -57,7 +57,7 @@ jobs:
       - name: Install deps
         run: |
           set -euo pipefail
-          uv sync --extra ${{ inputs.uv-extras }}
+          uv sync --frozen --extra ${{ inputs.uv-extras }}
 
       - name: Ruff check
         run: |

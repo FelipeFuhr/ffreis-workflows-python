@@ -53,7 +53,7 @@ jobs:
       - name: Install deps (docs extras)
         run: |
           set -euo pipefail
-          uv sync --extra ${{ inputs.uv-extras }}
+          uv sync --frozen --extra ${{ inputs.uv-extras }}
 
       - name: Build docs
         run: |

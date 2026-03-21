@@ -10,12 +10,22 @@ help:
 ## lint: Validate workflow YAML + ruff on examples
 lint:
 	@echo "==> Validating workflow YAML files..."
-	@for f in $(WORKFLOWS_DIR)/*.yml; do \
-		python3 -c "import sys, yaml; yaml.safe_load(open('$$f'))" \
-			&& echo "  OK: $$f" \
-			|| { echo "  FAIL: $$f"; exit 1; }; \
-	done
-	@echo "All YAML files are valid."
+	@if command -v yamllint > /dev/null 2>&1; then \
+		yamllint -d '{extends: relaxed, rules: {line-length: {max: 160}}}' $(WORKFLOWS_DIR)/; \
+		echo "All YAML files are valid."; \
+	else \
+		python3 -c "import yaml" >/dev/null 2>&1 || { \
+			echo "ERROR: Neither yamllint nor PyYAML is available."; \
+			echo "Install yamllint with 'pip install yamllint' or PyYAML with 'pip install pyyaml'."; \
+			exit 1; \
+		}; \
+		for f in $(WORKFLOWS_DIR)/*.yml; do \
+			python3 -c "import sys, yaml; yaml.safe_load(open('$$f'))" \
+				&& echo "  OK: $$f" \
+				|| { echo "  FAIL: $$f"; exit 1; }; \
+		done; \
+		echo "All YAML files are valid."; \
+	fi
 	@if command -v uv > /dev/null 2>&1; then \
 		cd examples/hello && uv run ruff check .; \
 	else \

@@ -12,7 +12,7 @@ fi
 is_allowlisted() {
   local path="$1"
   local ext="${path##*.}"
-  ext="${ext,,}"
+  ext="$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')"
 
   case "$path" in
     testdata/*|*/testdata/*|examples/*|*/examples/*)
