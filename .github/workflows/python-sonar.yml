@@ -1,0 +1,112 @@
+name: Python SonarCloud
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+      uv-extras:
+        description: "uv extras to install (e.g. dev)"
+        type: string
+        default: "dev"
+      sonar-project-key:
+        description: "SonarCloud project key (defaults to repository name)"
+        type: string
+        default: ""
+      sonar-organization:
+        description: "SonarCloud organization slug"
+        type: string
+        default: ""
+      coverage-command:
+        description: "Command to generate coverage report (XML)"
+        type: string
+        default: "uv run pytest --cov=src --cov-report=xml tests/unit_tests"
+      coverage-file:
+        description: "Path to the coverage XML file"
+        type: string
+        default: "coverage.xml"
+      coverage-artifact-name:
+        description: "Name of a coverage artifact uploaded by python-coverage.yml (skips regeneration)"
+        type: string
+        default: ""
+    secrets:
+      SONAR_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  sonar:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    if: vars.SONAR_ENABLED != 'false'
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Verify SonarCloud credentials
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "${SONAR_TOKEN}" ]; then
+            echo "::error title=SonarCloud not configured::Missing: SONAR_TOKEN secret"
+            echo "Add at: Settings → Secrets and variables → Actions → New secret"
+            echo "To skip: Settings → Variables → add SONAR_ENABLED=false"
+            exit 1
+          fi
+
+      - name: Install deps
+        run: |
+          set -euo pipefail
+          uv sync --frozen --extra ${{ inputs.uv-extras }}
+
+      - name: Download coverage artifact
+        if: inputs.coverage-artifact-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.coverage-artifact-name }}
+          path: ${{ inputs.working-directory }}
+
+      - name: Generate coverage (if no artifact)
+        if: inputs.coverage-artifact-name == ''
+        run: |
+          set -euo pipefail
+          ${{ inputs.coverage-command }}
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          projectBaseDir: ${{ inputs.working-directory }}
+          args: >
+            -Dsonar.projectKey=${{ inputs.sonar-project-key || github.event.repository.name }}
+            -Dsonar.organization=${{ inputs.sonar-organization || vars.SONAR_ORGANIZATION }}
+            -Dsonar.python.coverage.reportPaths=${{ inputs.coverage-file }}
+            -Dsonar.sources=src
+            -Dsonar.tests=tests
+            -Dsonar.python.version=${{ inputs.python-version }}

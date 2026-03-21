@@ -1,4 +1,7 @@
 name: Python Coverage (Codecov)
+# Uploads to Codecov when CODECOV_TOKEN is provided; when absent the upload
+# step is attempted without a token (tokenless upload) and will not fail CI
+# because fail_ci_if_error is false.
 
 on:
   workflow_call:

@@ -9,9 +9,8 @@ on:
 # Validates that every workflow defined in this library functions correctly
 # against the minimal example app in examples/hello/.
 #
-# python-coverage uploads to Codecov only when CODECOV_TOKEN is set;
-# when absent the upload step is silently skipped — the coverage run still
-# executes and validates the workflow logic.
+# python-coverage passes CODECOV_TOKEN explicitly (least-privilege); tokenless
+# uploads are attempted when the secret is absent and will not fail CI.
 
 jobs:
   fmt:
@@ -59,7 +58,8 @@ jobs:
     uses: ./.github/workflows/python-coverage.yml
     with:
       working-directory: examples/hello
-    secrets: inherit
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   docs:
     uses: ./.github/workflows/python-docs.yml
@@ -70,6 +70,13 @@ jobs:
     uses: ./.github/workflows/python-bench.yml
     with:
       working-directory: examples/hello
+
+  mutation:
+    uses: ./.github/workflows/python-mutation.yml
+    with:
+      working-directory: examples/hello
+      paths-to-mutate: src
+      threshold: 60
 
   container:
     uses: ./.github/workflows/python-container.yml

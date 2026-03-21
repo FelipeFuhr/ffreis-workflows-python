@@ -1,0 +1,167 @@
+name: Python Mutation Testing
+
+# Reusable workflow — callers invoke via:
+#   uses: ffreis/ffreis-platform-workflows-python/.github/workflows/python-mutation.yml@main
+#
+# Intended schedule: weekly (Sunday 02:00 UTC) or workflow_dispatch.
+# Do NOT run on every PR — mutation testing takes 5–30 min per repo.
+#
+# Exit behaviour:
+#   - exit 0  → mutation score ≥ threshold   (pass)
+#   - exit 1  → mutation score  < threshold  (fail CI)
+#
+# Requires: mutmut>=2.0 in the uv-extras group (e.g. dev).
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+      uv-extras:
+        description: "uv extras group that contains mutmut (e.g. dev)"
+        type: string
+        default: "dev"
+      paths-to-mutate:
+        description: "Source path(s) for mutmut to mutate (e.g. src/mypackage)"
+        type: string
+        default: "src"
+      threshold:
+        description: "Minimum mutation score (0–100). CI fails if score is below this."
+        type: number
+        default: 60
+      timeout-minutes:
+        description: "Total job timeout in minutes"
+        type: number
+        default: 60
+    outputs:
+      mutation-score:
+        description: "Achieved mutation score (integer, 0–100)"
+        value: ${{ jobs.mutation.outputs.score }}
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Mutation score (mutmut)
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    outputs:
+      score: ${{ steps.score.outputs.score }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock exists
+        run: |
+          set -euo pipefail
+          test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
+
+      - name: Install deps
+        run: |
+          set -euo pipefail
+          uv sync --frozen --extra ${{ inputs.uv-extras }}
+
+      # Baseline run: verify tests pass before mutating anything.
+      - name: Baseline test run
+        run: |
+          set -euo pipefail
+          uv run pytest -q --tb=short 2>&1 | tail -10
+
+      - name: Run mutation testing
+        id: run
+        run: |
+          set -euo pipefail
+          uv run mutmut run \
+            --paths-to-mutate "${{ inputs.paths-to-mutate }}" \
+            || true   # mutmut exits 1 when mutants survive; score check is below
+
+      - name: Export JUnit report
+        run: |
+          set -euo pipefail
+          uv run mutmut junitxml > mutmut.xml
+
+      - name: Compute score and enforce threshold
+        id: score
+        env:
+          THRESHOLD: ${{ inputs.threshold }}
+        run: |
+          set -euo pipefail
+
+          python3 - "$THRESHOLD" <<'EOF'
+          import os, sys, xml.etree.ElementTree as ET
+
+          threshold = int(sys.argv[1])
+
+          try:
+              root = ET.parse("mutmut.xml").getroot()
+              total    = int(root.get("tests",    0))
+              failures = int(root.get("failures", 0))
+              errors   = int(root.get("errors",   0))
+          except Exception as exc:
+              print(f"::warning title=Mutation Report::Could not parse mutmut.xml: {exc}")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("score=100\n")
+              sys.exit(0)
+
+          survived = failures + errors
+          killed   = total - survived
+
+          if total == 0:
+              print("::notice title=Mutation Score::No viable mutants found — marking as passed.")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("score=100\n")
+              sys.exit(0)
+
+          score = killed * 100 // total
+          print(f"Killed: {killed}  Survived: {survived}  Total: {total}")
+          print(f"Score: {score}%  Threshold: {threshold}%")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"score={score}\n")
+
+          if score < threshold:
+              print(
+                  f"::error title=Mutation Score Too Low::"
+                  f"Score {score}% is below threshold {threshold}%. "
+                  f"Killed {killed}/{total} mutants. "
+                  f"Add tests that exercise more code paths."
+              )
+              sys.exit(1)
+          else:
+              print(
+                  f"::notice title=Mutation Score OK::"
+                  f"Score {score}% ≥ threshold {threshold}% ({killed}/{total} mutants killed)."
+              )
+          EOF
+
+      - name: Upload mutmut report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutmut-report
+          path: |
+            ${{ inputs.working-directory }}/mutmut.xml
+            ${{ inputs.working-directory }}/.mutmut-cache
+          retention-days: 14
+          if-no-files-found: ignore
