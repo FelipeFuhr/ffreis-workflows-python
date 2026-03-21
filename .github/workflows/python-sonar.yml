@@ -80,9 +80,11 @@ jobs:
           fi
 
       - name: Install deps
+        env:
+          UV_EXTRAS: ${{ inputs.uv-extras }}
         run: |
           set -euo pipefail
-          uv sync --frozen --extra ${{ inputs.uv-extras }}
+          uv sync --frozen --extra "$UV_EXTRAS"
 
       - name: Download coverage artifact
         if: inputs.coverage-artifact-name != ''
@@ -93,13 +95,15 @@ jobs:
 
       - name: Generate coverage (if no artifact)
         if: inputs.coverage-artifact-name == ''
+        env:
+          COVERAGE_COMMAND: ${{ inputs.coverage-command }}
         run: |
           set -euo pipefail
-          ${{ inputs.coverage-command }}
+          $COVERAGE_COMMAND
 
       - name: SonarCloud Scan
         if: steps.sonar_gate.outputs.skip != 'true'
-        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # nosemgrep: generic.secrets.security.detected-sonarqube-docs-api-key
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io

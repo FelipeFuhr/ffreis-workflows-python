@@ -48,6 +48,7 @@ fmt-check:
 
 ## secrets-scan-staged: Scan staged files for secrets
 secrets-scan-staged:
+	@command -v gitleaks >/dev/null 2>&1 || { echo "::warning::gitleaks not found; skipping secret scan. Install: https://github.com/gitleaks/gitleaks"; exit 0; }
 	gitleaks protect --staged --redact
 
 ## lefthook-bootstrap: Download lefthook binary to .bin/

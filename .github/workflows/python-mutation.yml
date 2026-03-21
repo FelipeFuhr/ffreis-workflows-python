@@ -78,9 +78,11 @@ jobs:
           test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
 
       - name: Install deps
+        env:
+          UV_EXTRAS: ${{ inputs.uv-extras }}
         run: |
           set -euo pipefail
-          uv sync --frozen --extra ${{ inputs.uv-extras }}
+          uv sync --frozen --extra "$UV_EXTRAS"
 
       # Baseline run: verify tests pass before mutating anything.
       - name: Baseline test run
@@ -90,16 +92,13 @@ jobs:
 
       - name: Run mutation testing
         id: run
+        env:
+          PATHS_TO_MUTATE: ${{ inputs.paths-to-mutate }}
         run: |
           set -euo pipefail
           uv run mutmut run \
-            --paths-to-mutate "${{ inputs.paths-to-mutate }}" \
+            --paths-to-mutate "$PATHS_TO_MUTATE" \
             || true   # mutmut exits 1 when mutants survive; score check is below
-
-      - name: Export JUnit report
-        run: |
-          set -euo pipefail
-          uv run mutmut junitxml > mutmut.xml
 
       - name: Compute score and enforce threshold
         id: score
@@ -109,23 +108,28 @@ jobs:
           set -euo pipefail
 
           python3 - "$THRESHOLD" <<'EOF'
-          import os, sys, xml.etree.ElementTree as ET
+          import os, sqlite3, sys
 
           threshold = int(sys.argv[1])
+          cache = ".mutmut-cache"
 
-          try:
-              root = ET.parse("mutmut.xml").getroot()
-              total    = int(root.get("tests",    0))
-              failures = int(root.get("failures", 0))
-              errors   = int(root.get("errors",   0))
-          except Exception as exc:
-              print(f"::warning title=Mutation Report::Could not parse mutmut.xml: {exc}")
+          if not os.path.exists(cache):
+              print("::notice title=Mutation Score::No .mutmut-cache found — marking as passed.")
               with open(os.environ["GITHUB_OUTPUT"], "a") as f:
                   f.write("score=100\n")
               sys.exit(0)
 
-          survived = failures + errors
-          killed   = total - survived
+          conn = sqlite3.connect(cache)
+          rows = dict(conn.execute(
+              "SELECT status, COUNT(*) FROM mutant GROUP BY status"
+          ).fetchall())
+          conn.close()
+
+          killed   = rows.get("ok_killed",    0)
+          survived = rows.get("bad_survived", 0)
+          timeout  = rows.get("bad_timeout",  0)
+
+          total = killed + survived + timeout
 
           if total == 0:
               print("::notice title=Mutation Score::No viable mutants found — marking as passed.")
@@ -134,7 +138,7 @@ jobs:
               sys.exit(0)
 
           score = killed * 100 // total
-          print(f"Killed: {killed}  Survived: {survived}  Total: {total}")
+          print(f"Killed: {killed}  Survived: {survived}  Timeout: {timeout}  Total: {total}")
           print(f"Score: {score}%  Threshold: {threshold}%")
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
@@ -155,13 +159,11 @@ jobs:
               )
           EOF
 
-      - name: Upload mutmut report
+      - name: Upload mutmut cache
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mutmut-report
-          path: |
-            ${{ inputs.working-directory }}/mutmut.xml
-            ${{ inputs.working-directory }}/.mutmut-cache
+          path: ${{ inputs.working-directory }}/.mutmut-cache
           retention-days: 14
           if-no-files-found: ignore
