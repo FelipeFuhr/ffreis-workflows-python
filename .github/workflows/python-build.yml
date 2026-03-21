@@ -11,6 +11,10 @@ on:
         description: "JSON array of OS runners to test on"
         type: string
         default: '["ubuntu-latest","macos-latest"]'
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
       uv-extras:
         description: "uv extras to install (e.g. dev)"
         type: string
@@ -32,6 +36,11 @@ jobs:
     name: Build (${{ matrix.python }} / ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
     strategy:
       fail-fast: false
       matrix:

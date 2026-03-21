@@ -75,3 +75,5 @@ jobs:
     uses: ./.github/workflows/python-container.yml
     with:
       image-name: hello-example
+      context: examples/hello
+      containerfile: examples/hello/Containerfile
