@@ -47,17 +47,17 @@ jobs:
       - name: Build image
         run: |
           set -euo pipefail
-          BUILD_ARGS=""
+          BUILD_ARGS=()
           if [ -n "${{ inputs.build-args }}" ]; then
             while IFS= read -r arg; do
               [ -z "$arg" ] && continue
-              BUILD_ARGS="$BUILD_ARGS --build-arg $arg"
+              BUILD_ARGS+=(--build-arg "$arg")
             done <<< "${{ inputs.build-args }}"
           fi
           ${{ steps.engine.outputs.bin }} build \
             -f "${{ inputs.containerfile }}" \
             -t "${{ inputs.image-name }}" \
-            $BUILD_ARGS \
+            "${BUILD_ARGS[@]+"${BUILD_ARGS[@]}"}" \
             "${{ inputs.context }}"
 
       - name: Smoke test image

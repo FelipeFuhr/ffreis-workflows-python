@@ -68,7 +68,7 @@ jobs:
       - name: Install deps
         run: |
           set -euo pipefail
-          uv sync --extra ${{ inputs.uv-extras }}
+          uv sync --frozen --extra ${{ inputs.uv-extras }}
 
       - name: Generate coverage report
         run: |
@@ -76,7 +76,7 @@ jobs:
           ${{ inputs.coverage-command }}
           test -s ${{ inputs.coverage-file }}
 
-      - name: Gate on missing Codecov token (non-push)
+      - name: Warn on missing Codecov token (push)
         if: ${{ github.event_name == 'push' && secrets.CODECOV_TOKEN == '' }}
         run: |
           echo "CODECOV_TOKEN secret is not set — skipping upload."
