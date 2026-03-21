@@ -78,11 +78,11 @@ jobs:
       - name: Generate coverage report
         env:
           COVERAGE_COMMAND: ${{ inputs.coverage-command }}
-          COVERAGE_FILE: ${{ inputs.coverage-file }}
+          COVERAGE_REPORT_PATH: ${{ inputs.coverage-file }}
         run: |
           set -euo pipefail
           $COVERAGE_COMMAND
-          test -s "$COVERAGE_FILE"
+          test -s "$COVERAGE_REPORT_PATH"
 
       - name: Upload coverage to Codecov
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
