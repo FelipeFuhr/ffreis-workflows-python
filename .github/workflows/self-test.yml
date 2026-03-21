@@ -59,6 +59,7 @@ jobs:
     uses: ./.github/workflows/python-coverage.yml
     with:
       working-directory: examples/hello
+    secrets: inherit
 
   docs:
     uses: ./.github/workflows/python-docs.yml

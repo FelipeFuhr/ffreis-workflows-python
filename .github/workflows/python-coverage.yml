@@ -76,13 +76,8 @@ jobs:
           ${{ inputs.coverage-command }}
           test -s ${{ inputs.coverage-file }}
 
-      - name: Warn on missing Codecov token (push)
-        if: ${{ github.event_name == 'push' && secrets.CODECOV_TOKEN == '' }}
-        run: |
-          echo "CODECOV_TOKEN secret is not set — skipping upload."
-
       - name: Upload coverage to Codecov
-        if: ${{ secrets.CODECOV_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
         with:
           files: ${{ inputs.coverage-file }}
