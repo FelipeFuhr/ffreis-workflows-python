@@ -52,4 +52,4 @@ jobs:
       - name: pip-audit
         run: |
           set -euo pipefail
-          uv run pip-audit
+          uv run --with pip-audit pip-audit
