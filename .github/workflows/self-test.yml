@@ -9,9 +9,9 @@ on:
 # Validates that every workflow defined in this library functions correctly
 # against the minimal example app in examples/hello/.
 #
-# python-sonar and python-coverage skip their upload/scan steps when the
-# respective secret (SONAR_TOKEN / CODECOV_TOKEN) is not configured, so
-# all workflows are always exercised in CI.
+# python-sonar requires SONAR_TOKEN to be configured in the repository. The
+# job is skipped on fork pull requests (secrets are not available to forks),
+# but runs on all other events and fails if the token is absent.
 
 jobs:
   fmt:
@@ -63,6 +63,7 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   sonar:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/python-sonar.yml
     with:
       working-directory: examples/hello

@@ -37,7 +37,7 @@ on:
         default: ""
     secrets:
       SONAR_TOKEN:
-        required: false
+        required: true
 
 permissions:
   contents: read
@@ -67,18 +67,6 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Check SonarCloud token
-        id: sonar_gate
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          if [ -z "${SONAR_TOKEN}" ]; then
-            echo "::notice title=SonarCloud::SONAR_TOKEN not set — skipping scan. Add the secret to enable."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Install deps
         env:
           UV_EXTRAS: ${{ inputs.uv-extras }}
@@ -102,7 +90,6 @@ jobs:
           $COVERAGE_COMMAND
 
       - name: SonarCloud Scan
-        if: steps.sonar_gate.outputs.skip != 'true'
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # nosemgrep: generic.secrets.security.detected-sonarqube-docs-api-key
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
