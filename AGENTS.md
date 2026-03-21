@@ -17,39 +17,21 @@ A workflow that is not exercised by `self-test.yml` is unverified. It will not b
 **There are no exceptions in this repo.** All workflows here operate on source code and
 do not require live external infrastructure.
 
-**Handling optional secrets** — if a workflow uses a secret that may not always be present
-(e.g. `SONAR_TOKEN`, `CODECOV_TOKEN`), implement graceful-skip via output-based gating so
-the workflow always runs in CI, but skips only the token-dependent step:
-
-```yaml
-- name: Check token
-  id: gate
-  env:
-    TOKEN: ${{ secrets.SOME_TOKEN }}
-  run: |
-    if [ -z "${TOKEN}" ]; then
-      echo "::notice::TOKEN not set — skipping. Add the secret to enable."
-      echo "skip=true" >> "$GITHUB_OUTPUT"
-    else
-      echo "skip=false" >> "$GITHUB_OUTPUT"
-    fi
-
-- name: Do the thing
-  if: steps.gate.outputs.skip != 'true'
-  ...
-```
-
-Pass the secret explicitly in `self-test.yml` — it will be absent in forks/PRs without the
-secret configured, triggering the skip path, which is the correct behaviour:
+**Handling required secrets** — if a workflow requires a secret (e.g. `SONAR_TOKEN`,
+`CODECOV_TOKEN`), declare it as `required: true` in the workflow. In `self-test.yml`, gate
+the entire job so it is explicitly skipped on fork PRs (where secrets are unavailable):
 
 ```yaml
 sonar:
+  if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
   uses: ./.github/workflows/python-sonar.yml
   with:
     working-directory: examples/hello
   secrets:
     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 ```
+
+This produces an explicit "Skipped" status on fork PRs rather than a silent success.
 
 ---
 
@@ -105,7 +87,7 @@ secrets:
 ### 5. `secrets.*` is forbidden in `if:` conditions
 
 GitHub Actions forbids `secrets.*` in `if:` expressions within `workflow_call` reusable
-workflows. Use output-based gating instead (see the graceful-skip pattern in rule 1).
+workflows. Use job-level `if:` gating in `self-test.yml` instead (see the pattern in rule 1).
 
 ---
 
@@ -122,7 +104,7 @@ uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 When Semgrep flags a SHA as a false-positive secret, suppress it inline:
 
 ```yaml
-uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # nosemgrep: generic.secrets.security.detected-sonarqube-docs-api-key
+uses: SonarSource/sonarqube-scan-action@<sha> # nosemgrep: generic.secrets.security.detected-sonarqube-docs-api-key.detected-sonarqube-docs-api-key
 ```
 
 ---
