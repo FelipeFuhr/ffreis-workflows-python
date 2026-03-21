@@ -1,4 +1,4 @@
-"""Simple greeter module — validates the full workflow suite."""
+"""Simple greeter module."""
 
 
 def greet(name: str) -> str:
