@@ -9,9 +9,9 @@ on:
 # Validates that every workflow defined in this library functions correctly
 # against the minimal example app in examples/hello/.
 #
-# python-coverage uploads to Codecov only when CODECOV_TOKEN is set;
-# when absent the upload step is silently skipped — the coverage run still
-# executes and validates the workflow logic.
+# python-sonar requires SONAR_TOKEN to be configured in the repository. The
+# job is skipped on fork pull requests (secrets are not available to forks),
+# but runs on all other events and fails if the token is absent.
 
 jobs:
   fmt:
@@ -59,6 +59,16 @@ jobs:
     uses: ./.github/workflows/python-coverage.yml
     with:
       working-directory: examples/hello
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  sonar:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    uses: ./.github/workflows/python-sonar.yml
+    with:
+      working-directory: examples/hello
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   docs:
     uses: ./.github/workflows/python-docs.yml
@@ -70,7 +80,16 @@ jobs:
     with:
       working-directory: examples/hello
 
+  mutation:
+    uses: ./.github/workflows/python-mutation.yml
+    with:
+      working-directory: examples/hello
+      paths-to-mutate: src
+      threshold: 60
+
   container:
     uses: ./.github/workflows/python-container.yml
     with:
       image-name: hello-example
+      context: examples/hello
+      containerfile: examples/hello/Containerfile

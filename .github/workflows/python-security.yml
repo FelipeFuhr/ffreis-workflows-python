@@ -25,12 +25,12 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
 
@@ -52,4 +52,4 @@ jobs:
       - name: pip-audit
         run: |
           set -euo pipefail
-          uv run pip-audit
+          uv run --with pip-audit pip-audit
