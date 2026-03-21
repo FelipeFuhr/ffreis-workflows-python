@@ -1,0 +1,56 @@
+name: Python Security (pip-audit)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  deps-security:
+    name: pip-audit
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock exists
+        run: |
+          set -euo pipefail
+          test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
+
+      - name: Install dependencies from lock
+        run: |
+          set -euo pipefail
+          uv sync
+
+      - name: pip-audit
+        run: |
+          set -euo pipefail
+          uv run pip install --upgrade pip-audit
+          uv run pip-audit

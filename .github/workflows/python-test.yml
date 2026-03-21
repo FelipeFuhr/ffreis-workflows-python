@@ -1,0 +1,70 @@
+name: Python Tests
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+      uv-extras:
+        description: "uv extras to install (e.g. dev)"
+        type: string
+        default: "dev"
+      test-dir:
+        description: "Directory containing tests"
+        type: string
+        default: "tests/unit_tests"
+      pytest-args:
+        description: "Extra arguments passed to pytest"
+        type: string
+        default: "-q"
+      timeout-minutes:
+        description: "Job timeout in minutes"
+        type: number
+        default: 25
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock exists
+        run: |
+          set -euo pipefail
+          test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
+
+      - name: Install deps (frozen)
+        run: |
+          set -euo pipefail
+          uv sync --frozen --extra ${{ inputs.uv-extras }}
+
+      - name: Run tests
+        run: |
+          set -euo pipefail
+          uv run --frozen pytest ${{ inputs.pytest-args }} ${{ inputs.test-dir }}

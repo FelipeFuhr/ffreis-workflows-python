@@ -1,0 +1,93 @@
+name: Python Coverage (Codecov)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+      uv-extras:
+        description: "uv extras to install (e.g. dev)"
+        type: string
+        default: "dev"
+      coverage-command:
+        description: "Command to generate coverage report"
+        type: string
+        default: "uv run pytest --cov=src --cov-report=xml tests/unit_tests"
+      coverage-file:
+        description: "Path to the coverage XML file"
+        type: string
+        default: "coverage.xml"
+      codecov-flags:
+        description: "Codecov flags"
+        type: string
+        default: "unit"
+      codecov-name:
+        description: "Codecov report name"
+        type: string
+        default: "unit-coverage"
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Unit Coverage
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock exists
+        run: |
+          set -euo pipefail
+          test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
+
+      - name: Install deps
+        run: |
+          set -euo pipefail
+          uv sync --extra ${{ inputs.uv-extras }}
+
+      - name: Generate coverage report
+        run: |
+          set -euo pipefail
+          ${{ inputs.coverage-command }}
+          test -s ${{ inputs.coverage-file }}
+
+      - name: Gate on missing Codecov token (non-push)
+        if: ${{ github.event_name == 'push' && secrets.CODECOV_TOKEN == '' }}
+        run: |
+          echo "CODECOV_TOKEN secret is not set — skipping upload."
+
+      - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
+        with:
+          files: ${{ inputs.coverage-file }}
+          flags: ${{ inputs.codecov-flags }}
+          name: ${{ inputs.codecov-name }}
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}

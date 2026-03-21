@@ -1,0 +1,72 @@
+name: Python Build (Matrix)
+
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: "JSON array of Python versions to test"
+        type: string
+        default: '["3.13","3.11","3.10"]'
+      os-list:
+        description: "JSON array of OS runners to test on"
+        type: string
+        default: '["ubuntu-latest","macos-latest"]'
+      uv-extras:
+        description: "uv extras to install (e.g. dev)"
+        type: string
+        default: "dev"
+      test-dir:
+        description: "Directory containing tests"
+        type: string
+        default: "tests/unit_tests"
+      build-command:
+        description: "Command to build the package"
+        type: string
+        default: "uv build"
+
+permissions:
+  contents: read
+
+jobs:
+  matrix-build:
+    name: Build (${{ matrix.python }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ${{ fromJson(inputs.python-versions) }}
+        os: ${{ fromJson(inputs.os-list) }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock exists
+        run: |
+          set -euo pipefail
+          test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
+
+      - name: Install deps (frozen)
+        run: |
+          set -euo pipefail
+          uv sync --frozen --extra ${{ inputs.uv-extras }}
+
+      - name: Run tests
+        run: |
+          set -euo pipefail
+          uv run --frozen pytest -q ${{ inputs.test-dir }}
+
+      - name: Build package
+        run: |
+          set -euo pipefail
+          ${{ inputs.build-command }}

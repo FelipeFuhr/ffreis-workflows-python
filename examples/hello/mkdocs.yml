@@ -1,0 +1,7 @@
+site_name: Hello
+site_description: Minimal Python example for platform workflow self-testing
+
+theme:
+  name: material
+
+docs_dir: docs

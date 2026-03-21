@@ -1,0 +1,43 @@
+name: Python Lock Sync Check
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  lock-sync:
+    name: uv lock --check
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock is not stale
+        run: |
+          set -euo pipefail
+          uv lock --check

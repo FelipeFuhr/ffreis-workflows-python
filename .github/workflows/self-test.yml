@@ -1,0 +1,76 @@
+name: Self Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Validates that every workflow defined in this library functions correctly
+# against the minimal example app in examples/hello/.
+#
+# python-coverage uploads to Codecov only when CODECOV_TOKEN is set;
+# when absent the upload step is silently skipped — the coverage run still
+# executes and validates the workflow logic.
+
+jobs:
+  fmt:
+    uses: ./.github/workflows/python-fmt.yml
+    with:
+      working-directory: examples/hello
+
+  lint:
+    uses: ./.github/workflows/python-lint.yml
+    with:
+      working-directory: examples/hello
+
+  test:
+    uses: ./.github/workflows/python-test.yml
+    with:
+      working-directory: examples/hello
+
+  build:
+    uses: ./.github/workflows/python-build.yml
+    with:
+      working-directory: examples/hello
+
+  lock-sync:
+    uses: ./.github/workflows/python-lock-sync.yml
+    with:
+      working-directory: examples/hello
+
+  security:
+    uses: ./.github/workflows/python-security.yml
+    with:
+      working-directory: examples/hello
+
+  semgrep:
+    uses: ./.github/workflows/python-semgrep.yml
+    with:
+      working-directory: examples/hello
+
+  hypothesis:
+    uses: ./.github/workflows/python-hypothesis.yml
+    with:
+      working-directory: examples/hello
+      test-dir: tests/hypothesis_tests
+
+  coverage:
+    uses: ./.github/workflows/python-coverage.yml
+    with:
+      working-directory: examples/hello
+
+  docs:
+    uses: ./.github/workflows/python-docs.yml
+    with:
+      working-directory: examples/hello
+
+  bench:
+    uses: ./.github/workflows/python-bench.yml
+    with:
+      working-directory: examples/hello
+
+  container:
+    uses: ./.github/workflows/python-container.yml
+    with:
+      image-name: hello-example

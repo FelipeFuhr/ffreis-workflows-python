@@ -1,0 +1,61 @@
+name: Python Docs Build
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+      uv-extras:
+        description: "uv extras to install for docs"
+        type: string
+        default: "docs"
+      docs-command:
+        description: "Command to build the documentation"
+        type: string
+        default: "uv run mkdocs build --strict"
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Build Docs
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock exists
+        run: |
+          set -euo pipefail
+          test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
+
+      - name: Install deps (docs extras)
+        run: |
+          set -euo pipefail
+          uv sync --extra ${{ inputs.uv-extras }}
+
+      - name: Build docs
+        run: |
+          set -euo pipefail
+          ${{ inputs.docs-command }}

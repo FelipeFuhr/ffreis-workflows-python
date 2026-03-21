@@ -1,0 +1,61 @@
+name: Python Format Check
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+      source-dirs:
+        description: "Space-separated dirs to check"
+        type: string
+        default: "src tests"
+      uv-extras:
+        description: "uv extras to install (e.g. dev)"
+        type: string
+        default: "dev"
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    name: Ruff Format Check
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock exists
+        run: |
+          set -euo pipefail
+          test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
+
+      - name: Install deps
+        run: |
+          set -euo pipefail
+          uv sync --extra ${{ inputs.uv-extras }}
+
+      - name: Ruff format check
+        run: |
+          set -euo pipefail
+          uv run ruff format --check ${{ inputs.source-dirs }}

@@ -1,0 +1,75 @@
+name: Python Benchmarks
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.13"
+      working-directory:
+        description: "Directory to run steps in"
+        type: string
+        default: "."
+      uv-extras:
+        description: "uv extras to install (e.g. dev)"
+        type: string
+        default: "dev"
+      bench-dir:
+        description: "Directory containing benchmarks"
+        type: string
+        default: "benchmarks/"
+      timeout-minutes:
+        description: "Job timeout in minutes"
+        type: number
+        default: 60
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    name: pytest-benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b
+        with:
+          enable-cache: true
+
+      - name: Assert uv.lock exists
+        run: |
+          set -euo pipefail
+          test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
+
+      - name: Install deps (frozen)
+        run: |
+          set -euo pipefail
+          uv sync --frozen --extra ${{ inputs.uv-extras }}
+
+      - name: Run benchmarks
+        run: |
+          set -euo pipefail
+          uv run --frozen pytest ${{ inputs.bench-dir }} \
+            --benchmark-only \
+            --benchmark-json=benchmark.json
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: ${{ inputs.working-directory == '.' && 'benchmark.json' || format('{0}/benchmark.json', inputs.working-directory) }}
+          retention-days: 90
