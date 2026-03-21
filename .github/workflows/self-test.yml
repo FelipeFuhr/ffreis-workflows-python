@@ -9,8 +9,9 @@ on:
 # Validates that every workflow defined in this library functions correctly
 # against the minimal example app in examples/hello/.
 #
-# python-coverage passes CODECOV_TOKEN explicitly (least-privilege); tokenless
-# uploads are attempted when the secret is absent and will not fail CI.
+# python-sonar and python-coverage skip their upload/scan steps when the
+# respective secret (SONAR_TOKEN / CODECOV_TOKEN) is not configured, so
+# all workflows are always exercised in CI.
 
 jobs:
   fmt:
@@ -60,6 +61,13 @@ jobs:
       working-directory: examples/hello
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  sonar:
+    uses: ./.github/workflows/python-sonar.yml
+    with:
+      working-directory: examples/hello
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   docs:
     uses: ./.github/workflows/python-docs.yml

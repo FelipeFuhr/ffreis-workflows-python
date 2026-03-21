@@ -37,7 +37,7 @@ on:
         default: ""
     secrets:
       SONAR_TOKEN:
-        required: true
+        required: false
 
 permissions:
   contents: read
@@ -67,15 +67,16 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Verify SonarCloud credentials
+      - name: Check SonarCloud token
+        id: sonar_gate
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if [ -z "${SONAR_TOKEN}" ]; then
-            echo "::error title=SonarCloud not configured::Missing: SONAR_TOKEN secret"
-            echo "Add at: Settings → Secrets and variables → Actions → New secret"
-            echo "To skip: Settings → Variables → add SONAR_ENABLED=false"
-            exit 1
+            echo "::notice title=SonarCloud::SONAR_TOKEN not set — skipping scan. Add the secret to enable."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install deps
@@ -97,6 +98,7 @@ jobs:
           ${{ inputs.coverage-command }}
 
       - name: SonarCloud Scan
+        if: steps.sonar_gate.outputs.skip != 'true'
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
