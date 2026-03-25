@@ -25,7 +25,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run Semgrep
         uses: semgrep/semgrep-action@v1
