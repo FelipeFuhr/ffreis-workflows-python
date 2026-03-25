@@ -1,7 +1,7 @@
 name: Python Mutation Testing
 
 # Reusable workflow — callers invoke via:
-#   uses: ffreis/ffreis-platform-workflows-python/.github/workflows/python-mutation.yml@main
+#   uses: FelipeFuhr/ffreis-workflows-python/.github/workflows/python-mutation.yml@main
 #
 # Intended schedule: weekly (Sunday 02:00 UTC) or workflow_dispatch.
 # Do NOT run on every PR — mutation testing takes 5–30 min per repo.
