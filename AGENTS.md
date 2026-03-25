@@ -14,8 +14,11 @@ corresponding job in `self-test.yml` that calls it against `examples/hello/`.
 
 A workflow that is not exercised by `self-test.yml` is unverified. It will not be merged.
 
-**There are no exceptions in this repo.** All workflows here operate on source code and
-do not require live external infrastructure.
+**Exception — repo-internal DevOps workflows** (`devops-*.yml`): these files manage the
+repository itself (security scanning, PR hygiene, release automation) and are event-triggered.
+They cannot use `workflow_call` and therefore cannot be invoked from `self-test.yml`. New
+`devops-*.yml` files are exempt from the self-test requirement. All other workflows here
+operate on source code and do not require live external infrastructure.
 
 **Handling required secrets** — if a workflow requires a secret (e.g. `SONAR_TOKEN`,
 `CODECOV_TOKEN`), declare it as `required: true` in the workflow. In `self-test.yml`, gate
