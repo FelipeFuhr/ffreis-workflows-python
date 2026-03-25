@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   scorecard:
-    if: vars.SCORECARD_ENABLED == 'true' && github.event_name != 'pull_request'
+    if: vars.SCORECARD_ENABLED == 'true'
     permissions:
       contents: read
       actions: read
@@ -27,7 +27,7 @@ jobs:
       upload-sarif: true
 
   stale:
-    if: vars.STALE_ENABLED == 'true' && github.event_name != 'pull_request'
+    if: vars.STALE_ENABLED == 'true'
     permissions:
       contents: read
       issues: write
