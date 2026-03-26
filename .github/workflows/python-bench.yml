@@ -67,7 +67,7 @@ jobs:
           BENCH_DIR: ${{ inputs.bench-dir }}
         run: |
           set -euo pipefail
-          uv run --frozen pytest $BENCH_DIR \
+          uv run --frozen pytest "$BENCH_DIR" \
             --benchmark-only \
             --benchmark-json=benchmark.json
 

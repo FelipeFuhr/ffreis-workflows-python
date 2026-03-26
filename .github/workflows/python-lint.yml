@@ -66,11 +66,13 @@ jobs:
           SOURCE_DIRS: ${{ inputs.source-dirs }}
         run: |
           set -euo pipefail
-          uv run ruff check $SOURCE_DIRS
+          read -r -a source_dirs_arr <<< "$SOURCE_DIRS"
+          uv run ruff check "${source_dirs_arr[@]}"
 
       - name: Mypy
         env:
           MYPY_DIRS: ${{ inputs.mypy-dirs }}
         run: |
           set -euo pipefail
-          uv run mypy $MYPY_DIRS
+          read -r -a mypy_dirs_arr <<< "$MYPY_DIRS"
+          uv run mypy "${mypy_dirs_arr[@]}"

@@ -72,4 +72,5 @@ jobs:
           TEST_DIR: ${{ inputs.test-dir }}
         run: |
           set -euo pipefail
-          uv run --frozen pytest $PYTEST_ARGS $TEST_DIR
+          read -r -a pytest_args_arr <<< "$PYTEST_ARGS"
+          uv run --frozen pytest "${pytest_args_arr[@]}" "$TEST_DIR"
