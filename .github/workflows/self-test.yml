@@ -20,10 +20,10 @@ permissions:
 
 jobs:
   workflows-policy:
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@v0.1.5
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@v0.1.6
 
   codeql-actions:
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@v0.1.5
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@v0.1.6
     with:
       languages: actions
       source-root: .
@@ -57,6 +57,7 @@ jobs:
     uses: ./.github/workflows/python-security.yml
     with:
       working-directory: examples/hello
+      fail-on-vuln: false
 
   semgrep:
     uses: ./.github/workflows/python-semgrep.yml

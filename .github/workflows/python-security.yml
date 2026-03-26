@@ -11,6 +11,14 @@ on:
         description: "Directory to run steps in"
         type: string
         default: "."
+      fail-on-vuln:
+        description: "Fail the workflow if vulnerabilities are found"
+        type: boolean
+        default: true
+      ignore-vulns:
+        description: "Comma-separated list of vulnerability IDs to ignore (e.g. CVE-2026-1234,CVE-2026-9999)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -50,6 +58,24 @@ jobs:
           uv sync --frozen
 
       - name: pip-audit
+        env:
+          FAIL_ON_VULN: ${{ inputs.fail-on-vuln }}
+          IGNORE_VULNS: ${{ inputs.ignore-vulns }}
         run: |
           set -euo pipefail
-          uv run --with pip-audit pip-audit
+          ignore_args=()
+          if [[ -n "$IGNORE_VULNS" ]]; then
+            IFS=',' read -r -a ignore_arr <<< "$IGNORE_VULNS"
+            for v in "${ignore_arr[@]}"; do
+              v="${v#"${v%%[![:space:]]*}"}"
+              v="${v%"${v##*[![:space:]]}"}"
+              [[ -z "$v" ]] && continue
+              ignore_args+=(--ignore-vuln "$v")
+            done
+          fi
+
+          if [[ "$FAIL_ON_VULN" == "true" ]]; then
+            uv run --with pip-audit pip-audit "${ignore_args[@]}"
+          else
+            uv run --with pip-audit pip-audit "${ignore_args[@]}" || true
+          fi
