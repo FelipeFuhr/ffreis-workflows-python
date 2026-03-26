@@ -3,8 +3,6 @@ name: DevOps / PR Hygiene
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
-  pull_request_target:
-    types: [opened, edited, synchronize, reopened]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
@@ -31,7 +29,7 @@ jobs:
       working-directory: "."
 
   labeler:
-    if: github.event_name == 'pull_request_target'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
     permissions:
       contents: read
       pull-requests: write
