@@ -24,7 +24,7 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-actionlint.yml@v0.1.5
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-actionlint.yml@v0.1.7
     with:
       working-directory: "."
 
