@@ -62,4 +62,4 @@ jobs:
           DOCS_COMMAND: ${{ inputs.docs-command }}
         run: |
           set -euo pipefail
-          $DOCS_COMMAND
+          bash -lc "$DOCS_COMMAND"
