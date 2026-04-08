@@ -72,7 +72,7 @@ jobs:
             --benchmark-json=benchmark.json
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark-results
           path: ${{ inputs.working-directory == '.' && 'benchmark.json' || format('{0}/benchmark.json', inputs.working-directory) }}
