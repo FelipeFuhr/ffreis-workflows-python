@@ -102,6 +102,7 @@ jobs:
           if [[ -z "$ORGANIZATION" && -f sonar-project.properties ]]; then
             ORGANIZATION="$(grep -E '^sonar\\.organization=' sonar-project.properties | head -n 1 | cut -d= -f2- || true)"
           fi
+          ORGANIZATION="${ORGANIZATION,,}"
 
           EXTRA=""
           [ -n "$PROJECT_KEY" ] && EXTRA="$EXTRA -Dsonar.projectKey=$PROJECT_KEY"

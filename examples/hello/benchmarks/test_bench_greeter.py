@@ -1,7 +1,8 @@
 """Benchmarks for the greeter module."""
 
-from hello.greeter import greet
 from pytest_benchmark.fixture import BenchmarkFixture
+
+from hello.greeter import greet
 
 
 def test_greet_short_name(benchmark: BenchmarkFixture) -> None:
