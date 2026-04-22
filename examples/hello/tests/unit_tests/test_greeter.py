@@ -1,7 +1,6 @@
 """Unit tests for the greeter module."""
 
 import pytest
-
 from hello.greeter import greet
 
 

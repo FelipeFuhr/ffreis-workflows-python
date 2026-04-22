@@ -1,10 +1,9 @@
 """Property-based tests for the greeter module."""
 
 import pytest
+from hello.greeter import greet
 from hypothesis import given
 from hypothesis import strategies as st
-
-from hello.greeter import greet
 
 
 @given(st.text(min_size=1).filter(lambda s: bool(s.strip())))
