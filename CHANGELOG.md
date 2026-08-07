@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.2.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.1.1...v1.2.0) (2026-08-07)
+
+
+### Features
+
+* **ci:** add self-hosted runner input to Python reusable workflows ([#85](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/85)) ([2936830](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/2936830bf712e9fa3b89573625d3f0286a86b6ab))
+* **semgrep:** replace Docker-container semgrep-action with native CLI ([#86](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/86)) ([512abde](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/512abdea57ed93d2ae96e48d60815649a0d0de80))
+* **test:** add coverage-min input to python-test.yml ([#82](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/82)) ([359eb22](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/359eb22d0d22b6266b4543764f1c8bebe5e84765))
+* **test:** add integration-coverage-min gate to python-test.yml ([#98](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/98)) ([7071b5c](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/7071b5c2da55edcb214af288933bb93366137dcb))
+* **workflows:** add sibling-repos input to Python CI workflows ([#81](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/81)) ([7450df9](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/7450df902ed3e0402509d5da85a6a0d1338acc13))
+
+
+### Bug Fixes
+
+* **ci:** pin ffreis-workflows-general to v1.7.0 ([#80](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/80)) ([af7ee47](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/af7ee47e983940e266128c071f2d7b687cddafed))
+* drop --no-build from python-security + add ready_for_review to PR Labeler ([#93](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/93)) ([6efa929](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/6efa92922bf33c498a81424cbcbc0b5ac4bfaf9d))
+* **mutation:** replace --no-build with --no-sync in uv run steps ([#89](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/89)) ([4683244](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/468324450674863e23219786733d9935dc7c9054))
+* **release:** revert stale release-please manifest bump ([#96](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/96)) ([6b070d0](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/6b070d0cb812ccfc95bc8f5664a73d3fbd28867d))
+* **security:** declare uv-extras/uv-groups inputs on python-security.yml ([#97](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/97)) ([9d9e303](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/9d9e303cec6d6e2cffe5f2b655017abb52bfc977))
+* **sibling-repos:** clear target dir before clone (self-hosted workspace reuse) ([#88](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/88)) ([5f91200](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/5f9120070a2e5c08ffecffdf411e840de690173d))
+* **sibling-repos:** repoint clone URL to ffreis-org + FLEET_READ_TOKEN auth ([#87](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/87)) ([7fd79e8](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/7fd79e8b0eddf45ef21591e8900c304b439e0409))
+* **sonar:** exclude .venv and venv from SonarCloud scan ([#78](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/78)) ([ee1f609](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/ee1f609a5ad81f02ddda856a7018c9a5e165c4f4))
+
 ## [1.1.1](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.1.0...v1.1.1) (2026-06-15)
 
 
