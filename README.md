@@ -23,7 +23,7 @@ Replace `<sha>` with the latest commit SHA from the target workflow repository. 
 |------|---------|------------|
 | `python-fmt.yml` | `ruff format --check` | `python-version`, `working-directory`, `source-dirs`, `uv-extras` |
 | `python-lint.yml` | `ruff check` + `mypy` | `python-version`, `working-directory`, `source-dirs`, `mypy-dirs`, `uv-extras` |
-| `python-test.yml` | `pytest` unit tests | `python-version`, `working-directory`, `uv-extras`, `test-dir`, `pytest-args`, `timeout-minutes` |
+| `python-test.yml` | `pytest` unit + integration tests | `python-version`, `working-directory`, `uv-extras`, `uv-groups`, `test-dir`, `pytest-args`, `timeout-minutes`, `sibling-repos`, `coverage-min`, `integration-test-dir`, `integration-coverage-min`, `runner` |
 | `python-build.yml` | Matrix build (OS x Python) | `python-versions`, `os-list`, `uv-extras`, `test-dir`, `build-command` |
 | `python-security.yml` | `pip-audit` CVE scan | `python-version`, `working-directory` |
 | `python-coverage.yml` | `pytest-cov` + Codecov upload | `python-version`, `working-directory`, `uv-extras`, `coverage-command`, `coverage-file`, `codecov-flags`, `codecov-name`; secret `CODECOV_TOKEN` |
@@ -68,6 +68,26 @@ jobs:
     with:
       test-dir: "tests/unit_tests"
       pytest-args: "-q --tb=short"
+```
+
+### Unit + integration coverage gates
+
+`coverage-min` and `integration-coverage-min` are independent, opt-in gates
+(each defaults to `0` = no enforcement, no extra cost). Setting
+`integration-coverage-min` above `0` runs a second, separate pytest+coverage
+invocation against `integration-test-dir`; if that directory doesn't exist
+yet, the step logs a message and exits `0` instead of failing the job — safe
+to enable fleet-wide before every repo has integration tests.
+
+```yaml
+jobs:
+  test:
+    uses: ffreis/ffreis-platform-workflows-python/.github/workflows/python-test.yml@<sha> # latest
+    with:
+      test-dir: "tests/unit_tests"
+      coverage-min: 75
+      integration-test-dir: "tests/integration_tests"
+      integration-coverage-min: 75
 ```
 
 ### Matrix build
