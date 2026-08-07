@@ -54,6 +54,10 @@ jobs:
     uses: ./.github/workflows/python-test.yml
     with:
       working-directory: examples/hello
+      # examples/hello/tests/integration_tests/ exists specifically so this
+      # exercises the real integration-coverage-min gate (not just the
+      # missing-directory skip path).
+      integration-coverage-min: 50
 
   build:
     permissions:

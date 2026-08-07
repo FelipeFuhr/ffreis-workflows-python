@@ -44,6 +44,14 @@ on:
         description: "Minimum coverage percentage required (0 = no enforcement). Passed as --cov-fail-under to pytest."
         type: number
         default: 0
+      integration-test-dir:
+        description: "Directory containing integration tests"
+        type: string
+        default: "tests/integration_tests"
+      integration-coverage-min:
+        description: "Minimum integration-test coverage % (0 = disabled, step skipped). Independent of coverage-min; --cov-fail-under to pytest."
+        type: number
+        default: 0
       runner:
         description: |
           JSON-encoded runner label(s). Default: GitHub-hosted ubuntu-latest.
@@ -162,3 +170,20 @@ jobs:
             cov_args+=(--cov --cov-fail-under="$COVERAGE_MIN")
           fi
           uv run --frozen pytest "${pytest_args_arr[@]}" "${cov_args[@]}" "$TEST_DIR"
+
+      - name: Run integration tests
+        if: ${{ inputs.integration-coverage-min > 0 }}
+        env:
+          INTEGRATION_TEST_DIR: ${{ inputs.integration-test-dir }}
+          INTEGRATION_COVERAGE_MIN: ${{ inputs.integration-coverage-min }}
+        run: |
+          set -euo pipefail
+          if [[ ! -d "$INTEGRATION_TEST_DIR" ]]; then
+            echo "No integration test directory found at '$INTEGRATION_TEST_DIR' — skipping integration coverage gate."
+            exit 0
+          fi
+          cov_args=()
+          if [[ "$INTEGRATION_COVERAGE_MIN" -gt 0 ]]; then
+            cov_args+=(--cov --cov-fail-under="$INTEGRATION_COVERAGE_MIN")
+          fi
+          uv run --frozen pytest "${cov_args[@]}" "$INTEGRATION_TEST_DIR"
