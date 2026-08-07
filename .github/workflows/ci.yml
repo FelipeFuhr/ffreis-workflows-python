@@ -85,6 +85,7 @@ jobs:
     with:
       working-directory: examples/hello
       fail-on-vuln: false
+      uv-extras: "dev"
 
   semgrep:
     permissions:

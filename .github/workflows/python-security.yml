@@ -19,6 +19,14 @@ on:
         description: "Comma-separated list of vulnerability IDs to ignore (e.g. CVE-2026-1234,CVE-2026-9999)"
         type: string
         default: ""
+      uv-extras:
+        description: "uv extras to install (e.g. dev). Empty by default so the audit only covers what actually ships."
+        type: string
+        default: ""
+      uv-groups:
+        description: "uv dependency-groups (PEP 735) to install (e.g. dev)"
+        type: string
+        default: ""
       run_on_draft:
         description: "Run even on draft PRs (default: skip on draft to save CI minutes)"
         required: false
@@ -70,10 +78,20 @@ jobs:
           test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
 
       - name: Install dependencies from lock
+        env:
+          UV_EXTRAS: ${{ inputs.uv-extras }}
+          UV_GROUPS: ${{ inputs.uv-groups }}
         run: |
           set -euo pipefail
           # scan-fix(sonar:S8541): dropped --no-build — uv editable self-install ships no wheel; deps stay pinned via --frozen lockfile
-          uv sync --frozen
+          extra_args=()
+          for e in $UV_EXTRAS; do
+            extra_args+=(--extra "$e")
+          done
+          for g in $UV_GROUPS; do
+            extra_args+=(--group "$g")
+          done
+          uv sync --frozen "${extra_args[@]}"
 
       - name: pip-audit
         env:
