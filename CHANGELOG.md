@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.3.1...v1.4.0) (2026-08-08)
+
+
+### Features
+
+* **deps:** add optional PRIVATE_DEPS_TOKEN for uv's own git clones ([#100](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/100)) ([8405bfc](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/8405bfc6e887b6e1af634a6ed104538ab98d3baf))
+* **test:** add integration-coverage-min gate to python-test.yml ([#98](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/98)) ([7071b5c](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/7071b5c2da55edcb214af288933bb93366137dcb))
+
+
+### Bug Fixes
+
+* **ci:** correct release manifest, cover lock-sync, make git rewrite idempotent ([#102](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/102)) ([2950c21](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/2950c216f6d03ef059de7ce8cd05507189093764))
+* **release:** revert stale release-please manifest bump ([#96](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/96)) ([6b070d0](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/6b070d0cb812ccfc95bc8f5664a73d3fbd28867d))
+* **security:** declare uv-extras/uv-groups inputs on python-security.yml ([#97](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/97)) ([9d9e303](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/9d9e303cec6d6e2cffe5f2b655017abb52bfc977))
+
 ## [1.2.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.1.1...v1.2.0) (2026-08-07)
 
 
