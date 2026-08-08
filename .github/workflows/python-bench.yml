@@ -89,7 +89,16 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "${PRIVATE_DEPS_TOKEN:-}" ]]; then
-            git config --global url."https://x-access-token:${PRIVATE_DEPS_TOKEN}@github.com/".insteadOf "https://github.com/"
+            # url.*.insteadOf is multi-valued and $HOME persists between jobs on
+            # non-ephemeral self-hosted runners, so a rewrite installed by an
+            # earlier job is matched first and sends the wrong token (a clean
+            # 403, not a missing-credential error). Clear any existing
+            # github.com rewrite before installing ours.
+            git config --global --get-regexp '^url\..*\.insteadOf$' 2>/dev/null \
+              | awk '$2 == "https://github.com/" { print $1 }' \
+              | while read -r key; do git config --global --unset-all "$key" || true; done
+            git config --global --replace-all \
+              url."https://x-access-token:${PRIVATE_DEPS_TOKEN}@github.com/".insteadOf "https://github.com/"
           fi
 
       - name: Assert uv.lock exists
