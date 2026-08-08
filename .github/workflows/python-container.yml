@@ -26,10 +26,10 @@ on:
         default: false
       runner:
         description: |
-          JSON-encoded runner label(s). Default: self-hosted [self-hosted, local]. Pass '["ubuntu-latest"]' for GitHub-hosted.
+          JSON-encoded runner label(s). Default: GitHub-hosted ubuntu-latest.
         required: false
         type: string
-        default: '["self-hosted","local"]'
+        default: '["ubuntu-latest"]'
 
 jobs:
   container-build:
