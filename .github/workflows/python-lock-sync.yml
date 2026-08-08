@@ -72,7 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "${PRIVATE_DEPS_TOKEN:-}" ]]; then
-            git config --global --get-regexp '^url\..*\.insteadOf$' 2>/dev/null \
+            { git config --global --get-regexp '^url\..*\.insteadOf$' 2>/dev/null || true; } \
               | awk '$2 == "https://github.com/" { print $1 }' \
               | while read -r key; do git config --global --unset-all "$key" || true; done
             git config --global --replace-all \
