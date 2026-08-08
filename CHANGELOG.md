@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.4.0...v1.5.0) (2026-08-08)
+
+
+### Features
+
+* **lock-sync:** support sibling path-source repos ([#103](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/103)) ([f30b530](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/f30b53040d8eb6c0adeed50bf635a0626a82ea0b))
+
 ## [1.4.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.3.1...v1.4.0) (2026-08-08)
 
 
