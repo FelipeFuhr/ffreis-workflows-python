@@ -47,6 +47,9 @@ on:
       FLEET_READ_TOKEN:
         description: "Fleet-wide read PAT for cloning private sibling repos (optional; falls back to unauthenticated clone)."
         required: false
+      PRIVATE_DEPS_TOKEN:
+        description: "PAT for uv's own clone of private git-source deps in pyproject.toml (optional; falls back to unauthenticated clone, public deps only; not covered by actions/checkout's credential)."
+        required: false
 
 jobs:
   lint:
@@ -114,6 +117,24 @@ jobs:
             fi
             git clone --depth=1 "$clone_url" "$target"
           done
+
+      - name: Configure git for private git-source deps
+        # Placement matters: this step must run AFTER "Checkout sibling
+        # repos" and BEFORE the uv sync step. uv resolves git-source
+        # dependencies declared in pyproject.toml (e.g. `dep = { git =
+        # "https://github.com/..." }`) via its own internal git clone, which
+        # does not inherit the per-repo credential actions/checkout writes —
+        # that clone happens outside any checked-out repo, so uv is
+        # otherwise unauthenticated. Running this step after sibling checkout
+        # keeps that step's own unauthenticated public-repo fallback exactly
+        # as it is today. No-ops when PRIVATE_DEPS_TOKEN is unset.
+        env:
+          PRIVATE_DEPS_TOKEN: ${{ secrets.PRIVATE_DEPS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${PRIVATE_DEPS_TOKEN:-}" ]]; then
+            git config --global url."https://x-access-token:${PRIVATE_DEPS_TOKEN}@github.com/".insteadOf "https://github.com/"
+          fi
 
       - name: Assert uv.lock exists
         run: |
