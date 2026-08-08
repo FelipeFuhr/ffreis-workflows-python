@@ -16,6 +16,10 @@ on:
         required: false
         type: boolean
         default: false
+      sibling-repos:
+        description: "Space-separated sibling repos to clone before uv sync. Format: 'reponame' (clones to ../reponame) or 'reponame:relative-path' for non-standard paths."
+        type: string
+        default: ""
       runner:
         description: |
           JSON-encoded runner label(s). Default: GitHub-hosted ubuntu-latest.
@@ -24,6 +28,9 @@ on:
         default: '["ubuntu-latest"]'
 
     secrets:
+      FLEET_READ_TOKEN:
+        description: "Fleet-wide read PAT for cloning private sibling repos (optional; falls back to unauthenticated clone)."
+        required: false
       PRIVATE_DEPS_TOKEN:
         description: "PAT for uv's own clone of private git-source deps in pyproject.toml (optional; falls back to unauthenticated clone, public deps only; not covered by actions/checkout's credential)."
         required: false
@@ -59,9 +66,46 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Checkout sibling repos
+        if: ${{ inputs.sibling-repos != '' }}
+        env:
+          SIBLING_REPOS: ${{ inputs.sibling-repos }}
+          # scan-fix(org-migration): fleet repos moved FelipeFuhr -> ffreis-org;
+          # sibling repos are private, so an unauthenticated clone 404s even
+          # with the right org. FLEET_READ_TOKEN is the fleet-wide read PAT
+          # (quality-kit/scripts/deploy-pats.sh); callers pass it via
+          # `secrets: inherit`. Falls back to an unauthenticated clone (works
+          # for public repos) when the secret isn't set.
+          FLEET_READ_TOKEN: ${{ secrets.FLEET_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          for entry in $SIBLING_REPOS; do
+            repo="${entry%%:*}"
+            if [[ "$entry" == *:* ]]; then
+              relpath="${entry#*:}"
+              target="$GITHUB_WORKSPACE/$relpath"
+            else
+              target="$GITHUB_WORKSPACE/../$repo"
+            fi
+            mkdir -p "$(dirname "$target")"
+            # scan-fix(self-hosted-runner): self-hosted pods can reuse a
+            # persistent _work directory across jobs of the same workflow run
+            # (unlike ephemeral GitHub-hosted runners) — a prior job's sibling
+            # clone left `$target` populated, and `git clone` refuses to clone
+            # into a non-empty directory. Clear it first for idempotency.
+            rm -rf "$target"
+            if [[ -n "$FLEET_READ_TOKEN" ]]; then
+              clone_url="https://x-access-token:${FLEET_READ_TOKEN}@github.com/ffreis-org/${repo}.git"
+            else
+              clone_url="https://github.com/ffreis-org/${repo}.git"
+            fi
+            git clone --depth=1 "$clone_url" "$target"
+          done
+
       - name: Configure git for private git-source deps
-        # Placement: after "Set up uv", before `uv lock --check` (this workflow
-        # has no sibling-checkout step). `uv lock --check` still resolves the
+        # Placement: after "Checkout sibling repos", before `uv lock --check`,
+        # so that step's unauthenticated public fallback is unchanged.
+        # `uv lock --check` still resolves the
         # full dependency graph, so a git-source dep means resolving its pinned
         # ref and fetching metadata over the same authenticated git path
         # `uv sync` uses. url.*.insteadOf is multi-valued and $HOME persists
