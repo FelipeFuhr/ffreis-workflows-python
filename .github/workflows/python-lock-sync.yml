@@ -23,6 +23,11 @@ on:
         type: string
         default: '["ubuntu-latest"]'
 
+    secrets:
+      PRIVATE_DEPS_TOKEN:
+        description: "PAT for uv's own clone of private git-source deps in pyproject.toml (optional; falls back to unauthenticated clone, public deps only; not covered by actions/checkout's credential)."
+        required: false
+
 jobs:
   lock-sync:
     if: ${{ inputs.run_on_draft || vars.CI_RUN_ON_DRAFT == 'true' || github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
@@ -53,6 +58,26 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
           enable-cache: true
+
+      - name: Configure git for private git-source deps
+        # Placement: after "Set up uv", before `uv lock --check` (this workflow
+        # has no sibling-checkout step). `uv lock --check` still resolves the
+        # full dependency graph, so a git-source dep means resolving its pinned
+        # ref and fetching metadata over the same authenticated git path
+        # `uv sync` uses. url.*.insteadOf is multi-valued and $HOME persists
+        # between jobs on non-ephemeral self-hosted runners, so clear any
+        # existing github.com rewrite first. No-ops when the secret is unset.
+        env:
+          PRIVATE_DEPS_TOKEN: ${{ secrets.PRIVATE_DEPS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${PRIVATE_DEPS_TOKEN:-}" ]]; then
+            { git config --global --get-regexp '^url\..*\.insteadOf$' 2>/dev/null || true; } \
+              | awk '$2 == "https://github.com/" { print $1 }' \
+              | while read -r key; do git config --global --unset-all "$key" || true; done
+            git config --global --replace-all \
+              url."https://x-access-token:${PRIVATE_DEPS_TOKEN}@github.com/".insteadOf "https://github.com/"
+          fi
 
       - name: Assert uv.lock is not stale
         run: |
