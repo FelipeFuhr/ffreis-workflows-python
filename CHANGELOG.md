@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.1](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.5.0...v1.5.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* **ci:** pin own internal CI to ubuntu-latest — public repo can't use self-hosted ([#108](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/108)) ([6eb2914](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/6eb29149a824c71841b1910aed9c1449b51898b6))
+* **ci:** remove redundant standalone scorecards.yml ([#107](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/107)) ([cdd7f34](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/cdd7f349e7112b0c08aabd7296bb15159066b3d3))
+* **runner:** default the runner input to self-hosted, not ubuntu-latest ([#105](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/105)) ([f69a1ad](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/f69a1ad404d1bae63b4195cd79f3083ffa92aea1))
+* **sonar:** fix dead-code fallback that always used repo-owner org ([#110](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/110)) ([1f626c4](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/1f626c412a36563e4db48df726e3fef910e3e4b9))
+
 ## [1.5.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.4.0...v1.5.0) (2026-08-08)
 
 
