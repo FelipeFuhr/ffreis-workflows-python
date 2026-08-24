@@ -37,7 +37,7 @@ on:
         type: boolean
         default: false
       sibling-repos:
-        description: "Space-separated sibling repos to clone before uv sync. Format: 'reponame' (clones to ../reponame) or 'reponame:relative-path' for non-standard paths."
+        description: "Space-separated sibling repos to clone before uv sync. Format: '[owner/]reponame[:relative-path]' — owner defaults to ffreis-org when omitted; path defaults to ../reponame when omitted."
         type: string
         default: ""
       coverage-min:
@@ -112,11 +112,34 @@ jobs:
         run: |
           set -euo pipefail
           for entry in $SIBLING_REPOS; do
-            repo="${entry%%:*}"
+            # scan-fix(owner-qualify): peel off the optional ':relative-path'
+            # suffix FIRST, then look for '/' in what remains to split an
+            # optional 'owner/repo' prefix. Reversing this order would
+            # corrupt entries whose path itself contains '/', e.g.
+            # "ffreis-stock-simulator:../../stock/ffreis-stock-simulator".
+            repo_spec="${entry%%:*}"
             if [[ "$entry" == *:* ]]; then
               relpath="${entry#*:}"
+            else
+              relpath=""
+            fi
+            if [[ "$repo_spec" == */* ]]; then
+              owner="${repo_spec%%/*}"
+              repo="${repo_spec#*/}"
+            else
+              # scan-fix(owner-qualify): unqualified entries keep the
+              # historical ffreis-org default, so every existing
+              # sibling-repos: input keeps working unchanged.
+              owner="ffreis-org"
+              repo="$repo_spec"
+            fi
+            if [[ -n "$relpath" ]]; then
               target="$GITHUB_WORKSPACE/$relpath"
             else
+              # scan-fix(owner-qualify): target dir stays the bare repo name
+              # (never owner/repo) so an owner-qualified entry with no
+              # explicit path still lands at the conventional ../<repo>
+              # sibling location.
               target="$GITHUB_WORKSPACE/../$repo"
             fi
             mkdir -p "$(dirname "$target")"
@@ -126,10 +149,16 @@ jobs:
             # clone left `$target` populated, and `git clone` refuses to clone
             # into a non-empty directory. Clear it first for idempotency.
             rm -rf "$target"
+            # scan-fix(owner-qualify): credentials do not survive an HTTPS
+            # redirect, so the clone URL must carry the resolved owner
+            # directly rather than rely on GitHub's cross-owner redirect —
+            # that redirect only works today because the two FelipeFuhr-owned
+            # siblings are still public; an authenticated clone across a
+            # redirect would 403 the moment either goes private.
             if [[ -n "$FLEET_READ_TOKEN" ]]; then
-              clone_url="https://x-access-token:${FLEET_READ_TOKEN}@github.com/ffreis-org/${repo}.git"
+              clone_url="https://x-access-token:${FLEET_READ_TOKEN}@github.com/${owner}/${repo}.git"
             else
-              clone_url="https://github.com/ffreis-org/${repo}.git"
+              clone_url="https://github.com/${owner}/${repo}.git"
             fi
             git clone --depth=1 "$clone_url" "$target"
           done
