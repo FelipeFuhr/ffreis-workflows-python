@@ -1,4 +1,4 @@
-.PHONY: help lint check fmt-check secrets-scan-staged lefthook-bootstrap lefthook-install hooks setup
+.PHONY: help lint check fmt-check secrets-scan-staged lefthook-bootstrap lefthook-install hooks setup test-scripts
 
 WORKFLOWS_DIR := .github/workflows
 
@@ -7,7 +7,7 @@ help:
 	@echo "Available targets:"
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  /'
 
-## lint: Validate workflow YAML + ruff on examples
+## lint: Validate workflow YAML + ruff on examples + bats tests on embedded workflow scripts
 lint:
 	@echo "==> Validating workflow YAML files..."
 	@if command -v yamllint > /dev/null 2>&1; then \
@@ -30,6 +30,17 @@ lint:
 		cd examples/hello && uv run ruff check .; \
 	else \
 		echo "uv not found; skipping ruff lint on examples"; \
+	fi
+	@$(MAKE) test-scripts
+
+## test-scripts: Run bats tests covering the embedded workflow-step shell scripts
+test-scripts:
+	@echo "==> Running workflow script unit tests (bats)..."
+	@if command -v bats > /dev/null 2>&1; then \
+		bats scripts/tests/; \
+	else \
+		echo "bats not found; skipping workflow script unit tests."; \
+		echo "Install bats from https://github.com/bats-core/bats-core#installation to run them locally."; \
 	fi
 
 ## check: Run yamllint if available, otherwise fall back to lint
