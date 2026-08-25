@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.5.1...v1.6.0) (2026-08-25)
+
+
+### Features
+
+* **sibling-repos:** support owner-qualified entries; diagnose stale uv.lock ([#112](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/112)) ([af026b5](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/af026b51540997e734c5764a31ebedbafe9590c6))
+
 ## [1.5.1](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.5.0...v1.5.1) (2026-08-11)
 
 
