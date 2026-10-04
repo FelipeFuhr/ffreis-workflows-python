@@ -56,6 +56,9 @@ on:
       PRIVATE_DEPS_TOKEN:
         description: "PAT for uv's own clone of private git-source deps in pyproject.toml (optional; falls back to unauthenticated clone, public deps only; not covered by actions/checkout's credential)."
         required: false
+      CI_NOTIFY_ROLE_ARN:
+        description: "IAM role ARN for the fleet's monitor-Lambda CI-fallback notification (optional; omit to disable notification entirely — no AWS call is made)."
+        required: false
 
 jobs:
   sonar:
@@ -195,18 +198,23 @@ jobs:
           EXTRA=""
           [ -n "$PROJECT_KEY" ] && EXTRA="$EXTRA -Dsonar.projectKey=$PROJECT_KEY"
           [ -n "$ORGANIZATION" ] && EXTRA="$EXTRA -Dsonar.organization=$ORGANIZATION"
-          echo "args=$EXTRA" >> "$GITHUB_OUTPUT"
+          {
+            echo "args=$EXTRA"
+            echo "project_key=$PROJECT_KEY"
+            echo "organization=$ORGANIZATION"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@59db25f34e16620e48ab4bb9e4a5dce155cb5432 # nosemgrep: generic.secrets.security.detected-sonarqube-docs-api-key.detected-sonarqube-docs-api-key
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
+      - name: Sonar scan (with local fallback)
+        id: sonar
+        uses: FelipeFuhr/ffreis-workflows-general/.github/actions/sonar-scan-with-fallback@2a42e71188441922b2b926899d86fcc04fa4d7f0
         with:
-          projectBaseDir: ${{ inputs.working-directory }}
-          args: >
-            ${{ steps.sonar-args.outputs.args }}
+          project-base-dir: ${{ inputs.working-directory }}
+          project-key: ${{ steps.sonar-args.outputs.project_key }}
+          organization: ${{ steps.sonar-args.outputs.organization }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          extra-sonar-args: >
             -Dsonar.python.coverage.reportPaths=${{ inputs.coverage-file }}
             -Dsonar.sources=src
             -Dsonar.tests=tests
             -Dsonar.python.version=${{ inputs.python-version }}
+          notify-role-to-assume: ${{ secrets.CI_NOTIFY_ROLE_ARN }}
