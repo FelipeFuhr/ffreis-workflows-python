@@ -250,28 +250,60 @@ jobs:
           # pytest against the already-installed editable source on every
           # mutant; --no-sync keeps that fixed rather than re-triggering the
           # same --no-build crash on the first mutant.
+          # The exit code is CAPTURED, not discarded. mutmut exits 1 the moment
+          # any mutant survives, which is far stricter than the fleet threshold,
+          # so it cannot be obeyed directly. But it was previously thrown away
+          # with `|| true`, which also swallowed a crash, an OOM kill and a
+          # misconfiguration — and the scoring step below then read a missing
+          # cache as a pass. The rc is the only signal that separates "ran, and
+          # some mutants survived" from "died before producing any evidence",
+          # so it is recorded and handed to the scorer.
+          set +e
           uv run --frozen --no-sync mutmut run \
-            --paths-to-mutate "$PATHS_TO_MUTATE" \
-            || true   # mutmut exits 1 when mutants survive; score check is below
+            --paths-to-mutate "$PATHS_TO_MUTATE"
+          mutmut_rc=$?
+          set -e
+          echo "mutmut exited ${mutmut_rc}"
+          echo "mutmut-rc=${mutmut_rc}" >> "$GITHUB_OUTPUT"
 
       - name: Compute score and enforce threshold
         id: score
         env:
           THRESHOLD: ${{ inputs.threshold }}
+          MUTMUT_RC: ${{ steps.run.outputs.mutmut-rc }}
         run: |
           set -euo pipefail
 
-          python3 - "$THRESHOLD" <<'EOF'
+          python3 - "$THRESHOLD" "$MUTMUT_RC" <<'EOF'
           import os, sqlite3, sys
 
           threshold = int(sys.argv[1])
+          mutmut_rc = sys.argv[2] if len(sys.argv) > 2 else ""
           cache = ".mutmut-cache"
 
+          # A gate that cannot measure must FAIL, never pass.
+          #
+          # This previously wrote score=100 and exited 0 when the cache was
+          # absent, so a mutmut that crashed, was OOM-killed, or was simply the
+          # wrong major version reported a PERFECT score. Absence of evidence
+          # was being read as evidence of quality, across every caller of this
+          # workflow.
+          #
+          # This now mirrors the Rust scorer's contract exactly, which already
+          # had it right: real outcome files with zero viable mutants is a pass;
+          # no outcome files at all is a harness failure.
           if not os.path.exists(cache):
-              print("::notice title=Mutation Score::No .mutmut-cache found — marking as passed.")
+              print(
+                  "::error title=Mutation harness failed::mutmut produced no "
+                  f".mutmut-cache (exit code {mutmut_rc or 'unknown'}). That is a "
+                  "harness failure, not a pass — nothing was measured. Common "
+                  "causes: mutmut crashed or was OOM-killed mid-run; or mutmut >= 3 "
+                  "is installed, which stores results under mutants/ instead of "
+                  ".mutmut-cache and needs this workflow updated to read it."
+              )
               with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-                  f.write("score=100\n")
-              sys.exit(0)
+                  f.write("score=0\n")
+              sys.exit(1)
 
           conn = sqlite3.connect(cache)
           rows = dict(conn.execute(
@@ -285,6 +317,9 @@ jobs:
 
           total = killed + survived + timeout
 
+          # Zero viable mutants IS a legitimate pass — but only because we got
+          # here, which means mutmut ran and wrote a real cache. That is the
+          # distinction the missing-cache branch above enforces.
           if total == 0:
               print("::notice title=Mutation Score::No viable mutants found — marking as passed.")
               with open(os.environ["GITHUB_OUTPUT"], "a") as f:

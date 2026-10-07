@@ -17,7 +17,13 @@ dev = [
     "pytest-benchmark>=4.0",
     "ruff>=0.4",
     "pip-audit>=2.7",
-    "mutmut>=2.0",
+    # mutmut 3.x dropped the `--paths-to-mutate` CLI flag this workflow's
+    # own invocation relies on (moved to pyproject.toml config instead) and
+    # moved its cache location — capped here so this repo's own self-test
+    # exercises the real pass/fail path rather than a version-incompatibility
+    # crash. The reusable workflow itself still has no upper bound, so any
+    # fleet caller resolving mutmut>=3 hits the same crash; see PR follow-up.
+    "mutmut>=2.0,<3",
 ]
 docs = [
     "mkdocs-material>=9.0",
