@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.6.0...v1.7.0) (2026-10-07)
+
+
+### Features
+
+* **sonar:** route through the shared local-fallback composite ([0606110](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/06061100f91f3d132ff5a8bc85c1bf5c85d07a63))
+
+
+### Bug Fixes
+
+* **python-mutation:** fail when nothing was measured, instead of scoring 100 ([#115](https://github.com/FelipeFuhr/ffreis-workflows-python/issues/115)) ([633829d](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/633829d5c0cdd1dbcd986ddd1104824961bc2761))
+* **sonar:** wire run_on_draft into the job gate ([5f0fd79](https://github.com/FelipeFuhr/ffreis-workflows-python/commit/5f0fd792e1ccd0353f637b65a8400484793c95cd))
+
 ## [1.6.0](https://github.com/FelipeFuhr/ffreis-workflows-python/compare/v1.5.1...v1.6.0) (2026-08-25)
 
 
