@@ -10,7 +10,11 @@ name: Python Mutation Testing
 #   - exit 0  → mutation score ≥ threshold   (pass)
 #   - exit 1  → mutation score  < threshold  (fail CI)
 #
-# Requires: mutmut>=2.0 in the uv-extras group (e.g. dev).
+# Requires: mutmut>=2.4,<3 in the uv-extras group (e.g. dev). mutmut 3 dropped
+# the --paths-to-mutate/--tests-dir CLI flags this workflow (and `in-diff`
+# below) depend on in favor of v3-native [tool.mutmut] config — see
+# stock-rl-agent-repo's and ffreis-content-mocks's pyproject.toml for the
+# fleet's existing "pin <3" convention.
 
 on:
   workflow_call:
@@ -58,6 +62,43 @@ on:
         required: false
         type: string
         default: '["self-hosted","local"]'
+      in-diff:
+        description: >-
+          On pull_request events, mutate ONLY the .py files this PR changed
+          (under paths-to-mutate's own scope) instead of the whole
+          paths-to-mutate tree. Intended as a fast PR-time gate that
+          complements — not replaces — the existing weekly/monthly
+          `schedule:` run, which stays the full sweep.
+
+          Unlike cargo-mutants (Rust) and gremlins (Go), mutmut has NO native
+          diff/incremental mode at all — confirmed directly against the CLI
+          (`mutmut run --help`, every version from 2.5.1 through the current
+          3.8.0 latest: no diff-related flag exists). So this is a FILE-level
+          approximation, not cargo-mutants' line-level `--in-diff`: it computes
+          the PR's changed .py files itself (`git diff --merge-base`) and
+          passes just that list as `--paths-to-mutate`, overriding the
+          configured scope for this run only.
+
+          `--paths-to-mutate` takes a COMMA- or COLON-separated list, not
+          space-separated — confirmed directly: a space-separated value is
+          REJECTED outright ("Error: You must specify a list of paths to
+          mutate"), unlike every other space-separated list input in this
+          fleet's mutation workflows (gremlins' `packages`, cargo-mutants'
+          `-p`). The diff-computed list is comma-joined to match.
+
+          An empty diff (nothing under paths-to-mutate changed) skips mutmut
+          entirely and passes — it must NOT fall through to a bare
+          `--paths-to-mutate ""` call, which mutmut rejects outright (a hard,
+          loud failure, not a silent one), nor through to the scorer's
+          missing-.mutmut-cache branch, which is a deliberate hard FAIL by
+          design (see that step's own comment) — this is a different,
+          legitimate "nothing to check" case and is handled as its own
+          explicit branch, not a byproduct of either.
+
+          Ignored on non-pull_request events, which have no base to diff.
+        required: false
+        type: boolean
+        default: false
     secrets:
       FLEET_READ_TOKEN:
         description: "Fleet-wide read PAT for cloning private sibling repos (optional; falls back to unauthenticated clone)."
@@ -92,19 +133,80 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # fetch-depth 0 only when in-diff needs a merge-base against the PR's
+          # base branch. Quoted so the boolean ternary doesn't silently
+          # evaluate to the unquoted-0 footgun this fleet's other mutation
+          # workflows already document (bare `0` is falsy to `||`, so it would
+          # always fall through to 1).
+          fetch-depth: ${{ inputs.in-diff && '0' || '1' }}
+
+      # Computed before any dependency install so an empty diff (e.g. a
+      # docs-only PR) skips the entire sibling-checkout/uv-sync/baseline-test
+      # chain below, not just the mutmut invocation itself — in-diff exists to
+      # make the PR-time gate fast, and that chain is most of its cost.
+      - name: Compute PR diff for --paths-to-mutate
+        id: diff
+        if: ${{ inputs.in-diff && github.event_name == 'pull_request' }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PATHS_TO_MUTATE: ${{ inputs.paths-to-mutate }}
+        run: |
+          set -euo pipefail
+
+          base=""
+          for candidate in "origin/${BASE_REF}" "${BASE_REF}"; do
+            if git rev-parse --verify --quiet "$candidate" >/dev/null 2>&1; then
+              base="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$base" ]]; then
+            echo "::error title=Mutation diff error::cannot resolve base ref '${BASE_REF}'. Ensure the checkout used fetch-depth: 0."
+            exit 1
+          fi
+
+          # paths-to-mutate is itself comma/colon-separated (mutmut's own
+          # format — see the in-diff input's description). Keep only the PR's
+          # changed .py files that fall under one of those prefixes, so
+          # in-diff mode never mutates something outside the configured scope.
+          IFS=',:' read -r -a scope_prefixes <<< "$PATHS_TO_MUTATE"
+
+          mapfile -t changed_files < <(
+            git diff --merge-base "$base" --name-only -- '*.py' | while IFS= read -r f; do
+              for prefix in "${scope_prefixes[@]}"; do
+                if [[ "$f" == "$prefix" || "$f" == "$prefix"/* ]]; then
+                  echo "$f"
+                  break
+                fi
+              done
+            done
+          )
+
+          if [[ "${#changed_files[@]}" -eq 0 ]]; then
+            echo "result=empty" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Mutation skipped::This PR changes no .py file under '${PATHS_TO_MUTATE}', so there is nothing to mutate."
+          else
+            joined=$(IFS=,; echo "${changed_files[*]}")
+            echo "result=ok" >> "$GITHUB_OUTPUT"
+            echo "files=${joined}" >> "$GITHUB_OUTPUT"
+            echo "Mutating only lines changed by this PR (${#changed_files[@]} changed .py file(s)): ${joined}"
+          fi
 
       - name: Set up Python
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ inputs.python-version }}
 
       - name: Set up uv
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
           enable-cache: true
 
       - name: Checkout sibling repos
-        if: ${{ inputs.sibling-repos != '' }}
+        if: ${{ inputs.sibling-repos != '' && steps.diff.outputs.result != 'empty' }}
         env:
           SIBLING_REPOS: ${{ inputs.sibling-repos }}
           # scan-fix(org-migration): fleet repos moved FelipeFuhr -> ffreis-org;
@@ -169,6 +271,7 @@ jobs:
           done
 
       - name: Configure git for private git-source deps
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         # Placement matters: this step must run AFTER "Checkout sibling
         # repos" and BEFORE the uv sync step. uv resolves git-source
         # dependencies declared in pyproject.toml (e.g. `dep = { git =
@@ -196,11 +299,13 @@ jobs:
           fi
 
       - name: Assert uv.lock exists
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         run: |
           set -euo pipefail
           test -s uv.lock || (echo "uv.lock missing — run uv lock"; exit 1)
 
       - name: Install deps
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         env:
           UV_EXTRAS: ${{ inputs.uv-extras }}
           UV_GROUPS: ${{ inputs.uv-groups }}
@@ -223,6 +328,7 @@ jobs:
 
       # Baseline run: verify tests pass before mutating anything.
       - name: Baseline test run
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         run: |
           set -euo pipefail
           # scan-fix(sonar:S8541): --no-build → --no-sync — the project itself
@@ -241,8 +347,13 @@ jobs:
 
       - name: Run mutation testing
         id: run
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         env:
-          PATHS_TO_MUTATE: ${{ inputs.paths-to-mutate }}
+          # steps.diff only runs (and only sets `files`) when in-diff is
+          # active on a pull_request; otherwise its output is empty and this
+          # falls back to the full configured scope, unchanged from before
+          # in-diff existed.
+          PATHS_TO_MUTATE: ${{ steps.diff.outputs.files || inputs.paths-to-mutate }}
         run: |
           set -euo pipefail
           # scan-fix(sonar:S8541): --no-build → --no-sync — see the Baseline
@@ -271,15 +382,30 @@ jobs:
         env:
           THRESHOLD: ${{ inputs.threshold }}
           MUTMUT_RC: ${{ steps.run.outputs.mutmut-rc }}
+          DIFF_RESULT: ${{ steps.diff.outputs.result }}
         run: |
           set -euo pipefail
 
-          python3 - "$THRESHOLD" "$MUTMUT_RC" <<'EOF'
+          python3 - "$THRESHOLD" "$MUTMUT_RC" "$DIFF_RESULT" <<'EOF'
           import os, sqlite3, sys
 
           threshold = int(sys.argv[1])
           mutmut_rc = sys.argv[2] if len(sys.argv) > 2 else ""
+          diff_result = sys.argv[3] if len(sys.argv) > 3 else ""
           cache = ".mutmut-cache"
+
+          # in-diff determined there was nothing to mutate and every step
+          # since skipped accordingly — mutmut never even ran. This is
+          # DELIBERATE and distinct from the missing-cache branch below,
+          # which is a harness failure (mutmut ran, or should have, and
+          # produced no evidence). Must be checked first: falling through to
+          # that branch would hard-fail every docs-only / non-.py PR, exactly
+          # the kind of PR in-diff exists to make fast and green.
+          if diff_result == "empty":
+              print("::notice title=Mutation Score::Nothing to mutate — marking as passed.")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("score=100\n")
+              sys.exit(0)
 
           # A gate that cannot measure must FAIL, never pass.
           #

@@ -112,6 +112,43 @@ uses: SonarSource/sonarqube-scan-action@<sha> # nosemgrep: generic.secrets.secur
 
 ---
 
+### 7. `python-mutation.yml`'s `in-diff` is file-level, and `--paths-to-mutate` is comma/colon-separated, never space-separated
+
+mutmut has no native diff/incremental mode — confirmed directly against the CLI
+(`mutmut run --help`, 2.5.1 through the current 3.8.0 latest: no diff flag exists
+at any version). `in-diff` is therefore a FILE-level approximation: it computes
+the PR's changed `.py` files itself (`git diff --merge-base`) and hands that list
+to `--paths-to-mutate`, not a true line-level diff the way cargo-mutants'
+`--in-diff` is for Rust.
+
+`--paths-to-mutate` itself takes a COMMA- or COLON-separated list — confirmed
+directly: passing a SPACE-separated value (the convention every other language's
+mutation workflow in this fleet uses — gremlins' `packages`, cargo-mutants' `-p`)
+is REJECTED outright with "Error: You must specify a list of paths to mutate",
+not silently mis-parsed. The diff-computed file list is comma-joined to match;
+do not "fix" it to space-separated to match the other languages' convention.
+
+An empty diff (nothing under `paths-to-mutate` changed) must skip mutmut
+entirely rather than call it with an empty `--paths-to-mutate` — that is a hard,
+loud CLI failure, not a vacuous pass. It also must not be allowed to fall through
+to the scorer's missing-`.mutmut-cache` branch, which is a DELIBERATE hard FAIL
+("A gate that cannot measure must FAIL, never pass" — see that step's own
+comment): an empty diff is a different, legitimate "nothing to check" case, and
+is its own explicit early-exit branch in the scorer, checked before the
+missing-cache check.
+
+This repo's own `self-test.yml` runs on `push: branches: [main]` only, and
+`in-diff`'s effective condition is `github.event_name == 'pull_request'` — a
+self-test job that sets `in-diff: true` therefore silently runs the ordinary
+full-scope path instead. A green self-test run is not proof `in-diff` itself
+works; it was validated via `act` against a throwaway harness instead (real
+untested functions across multiple files, a synthetic `pull_request` event) —
+see the PR that introduced this input for the transcript.
+
+Requires `mutmut>=2.4,<3` — see the workflow file's own header comment.
+
+---
+
 ## Makefile targets
 
 | Target | Purpose |
