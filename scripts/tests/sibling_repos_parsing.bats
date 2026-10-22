@@ -115,6 +115,50 @@ run_step() {
   [ "$(clone_url)" = "https://x-access-token:test-token-xyz@github.com/FelipeFuhr/ffreis-stock-simulator.git" ]
 }
 
+@test "clone failure with no FLEET_READ_TOKEN: fails loudly with the empty-token diagnostic, not a bare git error" {
+  # Replaces the happy-path git mock with one that fails like an
+  # unauthenticated clone of a private repo actually does ("could not read
+  # Username" / exit 128) — this is the dead-token signature that went
+  # unnoticed for two months because the only visible symptom was a bare git
+  # error deep in the log, on a check nobody treats as required.
+  cat >"$MOCK_BIN/git" <<'MOCKEOF'
+#!/usr/bin/env bash
+if [[ "$1" == "clone" ]]; then
+  echo "fatal: could not read Username for 'https://github.com': No such device or address" >&2
+  exit 128
+fi
+exec /usr/bin/git "$@"
+MOCKEOF
+  chmod +x "$MOCK_BIN/git"
+
+  run_step "python-lock-sync.yml" "ffreis-stock-simulator" ""
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::"* ]]
+  [[ "$output" == *"no FLEET_READ_TOKEN set"* ]]
+  [[ "$output" == *"vault-deploy.sh backfill"* ]]
+  [[ "$output" == *"could not read Username"* ]]
+}
+
+@test "clone failure WITH FLEET_READ_TOKEN set: fails loudly with the invalid-token diagnostic, never implies the token is missing" {
+  cat >"$MOCK_BIN/git" <<'MOCKEOF'
+#!/usr/bin/env bash
+if [[ "$1" == "clone" ]]; then
+  echo "remote: Repository not found." >&2
+  echo "fatal: repository 'https://github.com/ffreis-org/ffreis-stock-simulator.git/' not found" >&2
+  exit 128
+fi
+exec /usr/bin/git "$@"
+MOCKEOF
+  chmod +x "$MOCK_BIN/git"
+
+  run_step "python-lock-sync.yml" "ffreis-stock-simulator" "test-token-xyz"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::"* ]]
+  [[ "$output" == *"even with FLEET_READ_TOKEN set"* ]]
+  [[ "$output" != *"no FLEET_READ_TOKEN set"* ]]
+  [[ "$output" == *"Repository not found"* ]]
+}
+
 @test "all six sibling-repos-capable workflows carry byte-identical parsing logic" {
   local base other wf
   base="$(extract_step_script "python-fmt.yml" "Checkout sibling repos")"

@@ -156,7 +156,15 @@ jobs:
             else
               clone_url="https://github.com/${owner}/${repo}.git"
             fi
-            git clone --depth=1 "$clone_url" "$target"
+            if ! git clone --depth=1 "$clone_url" "$target" 2>/tmp/sibling-clone-err.log; then
+              cat /tmp/sibling-clone-err.log >&2
+              if [[ -z "$FLEET_READ_TOKEN" ]]; then
+                echo "::error::Checkout sibling repos: clone of '$owner/$repo' failed with no FLEET_READ_TOKEN set. If '$repo' is private, the FLEET_READ_TOKEN secret is missing or empty on THIS repo (gh secret list shows presence, never value — redeploy via quality-kit/scripts/vault-deploy.sh backfill --repo <this-repo> --force). If '$repo' is genuinely public, check the org/repo name instead." >&2
+              else
+                echo "::error::Checkout sibling repos: clone of '$owner/$repo' failed even with FLEET_READ_TOKEN set (${#FLEET_READ_TOKEN} chars). The token may be invalid, expired, or lack access to '$repo' — see quality-kit/scripts/vault.sh status." >&2
+              fi
+              exit 1
+            fi
           done
 
       - name: Configure git for private git-source deps
